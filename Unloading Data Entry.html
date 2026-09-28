@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-950 text-slate-100">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Welspun DI - Unloading Entry App</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  .glass-card {
+    background: rgba(30, 41, 59, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .glass-input {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+  }
+  .glass-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
+  select option {
+    background-color: #0f172a;
+    color: #ffffff;
+  }
+</style>
+</head>
+<body class="h-full flex flex-col items-center justify-start p-2 sm:p-4 select-none font-sans">
+
+<!-- Main App Container -->
+<div id="appContainer" class="hidden w-full max-w-md flex flex-col gap-4 pb-12">
+
+  <!-- Header Card -->
+  <header class="glass-card rounded-3xl p-4 flex items-center justify-between shadow-2xl relative overflow-hidden">
+    <div class="flex items-center gap-3 z-10">
+      <div class="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+        <i data-lucide="truck" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <span class="text-[10px] font-extrabold tracking-widest text-blue-400 uppercase">WELSPUN DI</span>
+        <h1 class="text-xs font-bold text-white tracking-tight">Unloading Trolly & Trailer Entry</h1>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2 z-10">
+      <button onclick="toggleScanner()" class="p-2.5 rounded-2xl bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:bg-blue-600 hover:text-white transition-all active:scale-95" title="Scan Barcode">
+        <i data-lucide="qr-code" class="w-5 h-5"></i>
+      </button>
+      <div class="text-right">
+        <p class="text-[10px] text-slate-400">User:</p>
+        <p id="displayUsername" class="text-xs font-bold text-white leading-none">--</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Barcode Scanner Modal -->
+  <div id="scannerContainer" class="hidden glass-card rounded-3xl p-4 border-2 border-blue-500/50 shadow-2xl transition-all">
+    <div class="flex justify-between items-center mb-2">
+      <span class="text-xs font-semibold text-blue-400 flex items-center gap-1">
+        <i data-lucide="scan" class="w-4 h-4"></i> Smart Scanner (Auto Trolley / Lot)
+      </span>
+      <button onclick="toggleScanner()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div id="reader" class="overflow-hidden rounded-2xl border border-slate-700 bg-black min-h-[250px]"></div>
+  </div>
+
+  <!-- Entry Form -->
+  <form id="inventoryForm" class="space-y-4" onsubmit="event.preventDefault(); saveEntry();">
+    
+    <!-- Header Block -->
+    <section class="glass-card rounded-3xl p-4 space-y-3">
+      <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Trolly Header Details</h2>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Date *</label>
+          <input type="date" id="Date" required class="w-full glass-input text-xs rounded-xl px-3 py-2.5 outline-none">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Location *</label>
+          <select id="Location" required class="w-full glass-input text-xs rounded-xl px-3 py-2.5 outline-none">
+            <option value="">Select</option>
+            <option value="Old Yard">Old Yard</option>
+            <option value="New Yard">New Yard</option>
+            <option value="Currsing Yard">Currsing Yard</option>
+            <option value="PH2 Yard">PH2 Yard</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Trolly / Bin No *</label>
+        <select id="TrollyNo" required class="w-full glass-input text-xs rounded-xl px-3 py-2.5 outline-none font-semibold">
+          <option value="">Select Trolly / Trailer</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Item Specs Section -->
+    <section class="glass-card rounded-3xl p-4 space-y-3 border-l-4 border-l-blue-500">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-extrabold uppercase tracking-wider text-blue-400">Add Item Specs</h2>
+        <span class="text-[10px] text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30">Multiple Items Allowed</span>
+      </div>
+
+      <!-- Size & Class -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Size *</label>
+          <select id="Size" class="w-full glass-input text-xs rounded-xl px-2.5 py-2.5 outline-none">
+            <option value="">Select</option>
+            <option value="80">80</option>
+            <option value="100">100</option>
+            <option value="150">150</option>
+            <option value="200">200</option>
+            <option value="250">250</option>
+            <option value="300">300</option>
+            <option value="350">350</option>
+            <option value="400">400</option>
+            <option value="450">450</option>
+            <option value="500">500</option>
+            <option value="600">600</option>
+            <option value="700">700</option>
+            <option value="750">750</option>
+            <option value="800">800</option>
+            <option value="900">900</option>
+            <option value="1000">1000</option>
+            <option value="1100">1100</option>
+            <option value="1200">1200</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Class *</label>
+          <select id="Class" class="w-full glass-input text-xs rounded-xl px-2.5 py-2.5 outline-none">
+            <option value="">Select</option>
+            <option value="K7">K7</option>
+            <option value="K9">K9</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Length & Coating Date -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Length *</label>
+          <select id="Length" class="w-full glass-input text-xs rounded-xl px-2.5 py-2.5 outline-none">
+            <option value="">Select</option>
+            <option value="5.5">5.5</option>
+            <option value="5.0">5.0</option>
+            <option value="4.5">4.5</option>
+            <option value="4.0">4.0</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Coating Date</label>
+          <input type="date" id="CoatingDate" class="w-full glass-input text-xs rounded-xl px-3 py-2 outline-none">
+        </div>
+      </div>
+
+      <!-- Lot Prefix, Lot No & Qty -->
+      <div class="grid grid-cols-3 gap-2">
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Prefix *</label>
+          <select id="LotPrefix" class="w-full glass-input text-xs rounded-xl px-2 py-2.5 outline-none">
+            <option value="">Letter</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Lot No *</label>
+          <select id="LotNumber" class="w-full glass-input text-xs rounded-xl px-2 py-2.5 outline-none">
+            <option value="">Num</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 mb-1 block">Qty *</label>
+          <input type="number" id="Qty" placeholder="Pipes" class="w-full glass-input text-xs rounded-xl px-2.5 py-2.5 outline-none font-bold text-emerald-400">
+        </div>
+      </div>
+
+      <button type="button" onclick="addItemToCurrentList()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-lg shadow-blue-600/30 text-xs flex items-center justify-center gap-1.5 transition-all">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i> ➕ Add Item To Trolly Batch
+      </button>
+    </section>
+
+    <!-- Temp Added Items List -->
+    <section id="itemListContainer" class="hidden glass-card rounded-3xl p-4 space-y-2">
+      <div class="flex justify-between items-center text-xs">
+        <span class="font-bold text-slate-300">Items added in this Trolly (<span id="tempItemCount" class="text-blue-400">0</span>)</span>
+      </div>
+      <div class="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+        <table class="w-full text-left text-xs">
+          <thead class="text-slate-400 border-b border-slate-700">
+            <tr>
+              <th class="pb-1">Lot</th>
+              <th class="pb-1">Spec</th>
+              <th class="pb-1">Qty</th>
+              <th class="pb-1 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="tempItemsTableBody" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Notification Message -->
+    <div id="message" class="hidden p-3 rounded-xl text-xs font-semibold text-center transition-all"></div>
+
+    <!-- Save Button -->
+    <button type="submit" id="saveBtn" class="w-full bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold py-3.5 px-4 rounded-2xl shadow-xl border border-slate-700 text-xs flex items-center justify-center gap-2 transition-all">
+      💾 Save Complete Trolly to Device
+    </button>
+  </form>
+
+  <!-- Sync Section -->
+  <section class="glass-card rounded-3xl p-4 space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-xs font-bold text-white">Local Storage Stats</h3>
+        <p class="text-[10px] text-slate-400">Unsynced records pending on phone</p>
+      </div>
+      <span id="recordCountBadge" class="bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[10px] px-2.5 py-1 rounded-full">
+        0 Unsynced
+      </span>
+    </div>
+
+    <button type="button" onclick="syncAllToCloud()" id="syncBtn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95">
+      🚀 Sync All to OneDrive
+    </button>
+  </section>
+
+  <!-- Pending Local Entries Table -->
+  <section class="glass-card rounded-3xl p-4 space-y-2">
+    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Local Entries</h3>
+    <div class="overflow-x-auto max-h-48 overflow-y-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="text-slate-400 border-b border-slate-700 sticky top-0 bg-slate-900">
+          <tr>
+            <th class="p-2">Trolly / Lot</th>
+            <th class="p-2">Spec</th>
+            <th class="p-2">Qty</th>
+            <th class="p-2">Loc</th>
+            <th class="p-2 text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody id="localTableBody" class="divide-y divide-slate-800 text-slate-300">
+          <tr><td colspan="5" class="p-3 text-center text-slate-500">No pending entries saved locally.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- Step 1: User Modal -->
+<div id="userModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+  <div class="glass-card rounded-3xl max-w-sm w-full p-6 text-center border border-slate-700">
+    <h3 class="text-base font-bold text-white mb-1">👤 Supervisor Name</h3>
+    <p class="text-xs text-slate-400 mb-4">Apna poora naam enter karein</p>
+    <input type="text" id="usernameInput" placeholder="e.g. Mukesh Swami" class="w-full glass-input text-xs rounded-xl px-3.5 py-3 outline-none mb-3">
+    <button type="button" onclick="saveUsername()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs transition-all">
+      Next (Set Password)
+    </button>
+  </div>
+</div>
+
+<!-- Step 2: Password Modal -->
+<div id="passwordModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+  <div class="glass-card rounded-3xl max-w-sm w-full p-6 text-center border border-slate-700">
+    <h3 class="text-base font-bold text-white mb-1">🔒 Security Access</h3>
+    <p class="text-xs text-slate-400 mb-2" id="pwdHintText">Password daalein (First Name + @1234)</p>
+    <input type="password" id="appPasswordInput" placeholder="Enter Password" class="w-full glass-input text-xs rounded-xl px-3.5 py-3 outline-none mb-3">
+    <button type="button" onclick="verifyPassword()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs transition-all">
+      Verify Access
+    </button>
+    <p id="pwdError" class="text-xs text-red-400 mt-2 hidden font-medium">❌ Invalid Password!</p>
+  </div>
+</div>
+
+<script>
+const PWD_STORAGE_KEY = "inventory_auth_passed";
+const USER_KEY = "inventory_username";
+const LOCAL_DATA_KEY = "welspun_local_inventory_entries";
+const POWER_AUTOMATE_URL = 'https://default5b4308bc4f164e8daab026cc3b6f4b.ec.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/20/workflows/cb78d7f7b7dc4c219f73b29bd2ba712b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=2anKlO0EkHH58Blb05-AOV7l8C5zNbTAgO9C6WXTyYI';
+
+let currentUsername = "";
+let currentTrollyItems = [];
+let html5QrCode = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    lucide.createIcons();
+    document.getElementById("Date").valueAsDate = new Date();
+    populateDropdowns();
+    checkAccess();
+});
+
+function populateDropdowns() {
+    const trollySelect = document.getElementById("TrollyNo");
+    for (let i = 1; i <= 22; i++) {
+        const opt = document.createElement("option");
+        opt.value = `TR-${i}`;
+        opt.textContent = `TR-${i}`;
+        trollySelect.appendChild(opt);
+    }
+    for (let i = 1; i <= 4; i++) {
+        const opt = document.createElement("option");
+        opt.value = `Trailer ${i}`;
+        opt.textContent = `Trailer ${i}`;
+        trollySelect.appendChild(opt);
+    }
+
+    const prefixSelect = document.getElementById("LotPrefix");
+    for (let i = 65; i <= 90; i++) {
+        const char = String.fromCharCode(i);
+        if (char === 'Y') continue;
+        const opt = document.createElement("option");
+        opt.value = char;
+        opt.textContent = char;
+        prefixSelect.appendChild(opt);
+    }
+
+    const numberSelect = document.getElementById("LotNumber");
+    for (let i = 1; i <= 32; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = i;
+        numberSelect.appendChild(opt);
+    }
+}
+
+function getStoredRecords() {
+    try {
+        const raw = localStorage.getItem(LOCAL_DATA_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function setStoredRecords(records) {
+    try {
+        localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(records));
+    } catch (e) {}
+}
+
+function checkAccess() {
+    const isAuth = localStorage.getItem(PWD_STORAGE_KEY);
+    const savedName = localStorage.getItem(USER_KEY);
+
+    if (isAuth === "true" && savedName) {
+        currentUsername = savedName;
+        document.getElementById("displayUsername").innerText = currentUsername;
+        document.getElementById("userModal").classList.add("hidden");
+        document.getElementById("passwordModal").classList.add("hidden");
+        document.getElementById("appContainer").classList.remove("hidden");
+        renderUI();
+    } else {
+        document.getElementById("appContainer").classList.add("hidden");
+        document.getElementById("passwordModal").classList.add("hidden");
+        document.getElementById("userModal").classList.remove("hidden");
+        document.getElementById("userModal").classList.add("flex");
+    }
+}
+
+function saveUsername() {
+    const inputVal = document.getElementById("usernameInput").value.trim();
+    if (!inputVal) {
+        alert("Kripya Apna Naam enter karein!");
+        return;
+    }
+    currentUsername = inputVal;
+    localStorage.setItem(USER_KEY, currentUsername);
+    document.getElementById("displayUsername").innerText = currentUsername;
+
+    document.getElementById("userModal").classList.add("hidden");
+    document.getElementById("passwordModal").classList.remove("hidden");
+    document.getElementById("passwordModal").classList.add("flex");
+
+    const firstName = currentUsername.split(" ")[0];
+    document.getElementById("pwdHintText").innerText = `Password format: ${firstName}@1234`;
+}
+
+function verifyPassword() {
+    const enteredPwd = document.getElementById("appPasswordInput").value.trim();
+    const firstName = currentUsername.split(" ")[0];
+    const requiredPassword = `${firstName}@1234`;
+
+    if (enteredPwd === requiredPassword || enteredPwd.toLowerCase() === requiredPassword.toLowerCase()) {
+        localStorage.setItem(PWD_STORAGE_KEY, "true");
+        document.getElementById("pwdError").classList.add("hidden");
+        document.getElementById("passwordModal").classList.add("hidden");
+        document.getElementById("appContainer").classList.remove("hidden");
+        renderUI();
+    } else {
+        document.getElementById("pwdError").innerText = `❌ Password hona chahiye: ${firstName}@1234`;
+        document.getElementById("pwdError").classList.remove("hidden");
+    }
+}
+
+function getDateTime() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
+function addItemToCurrentList() {
+    const size = document.getElementById("Size").value;
+    const classVal = document.getElementById("Class").value;
+    const lengthVal = document.getElementById("Length").value;
+    const coatingDate = document.getElementById("CoatingDate").value;
+    const prefix = document.getElementById("LotPrefix").value;
+    const lotNum = document.getElementById("LotNumber").value;
+    const qty = document.getElementById("Qty").value;
+
+    const msgDiv = document.getElementById("message");
+
+    if (!size || !classVal || !lengthVal || !prefix || !lotNum || !qty) {
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-red-500/20 text-red-300 border border-red-500/30 block";
+        msgDiv.innerHTML = "⚠️ Item Add karne ke liye Size, Class, Length, Lot No aur Qty zaroori hain!";
+        return false;
+    }
+
+    const item = {
+        tempId: Date.now() + Math.random(),
+        Size: size,
+        Class: classVal,
+        Length: lengthVal,
+        CoatingDate: coatingDate || "N/A",
+        LotNo: `${prefix}${lotNum}`,
+        Qty: qty
+    };
+
+    currentTrollyItems.push(item);
+    resetItemFields();
+    renderTempItemsTable();
+
+    msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 block";
+    msgDiv.innerHTML = `✅ Item (${item.LotNo}) Trolly list me add ho gaya!`;
+
+    setTimeout(() => { msgDiv.className = "hidden"; }, 2500);
+    return true;
+}
+
+function removeTempItem(tempId) {
+    currentTrollyItems = currentTrollyItems.filter(i => i.tempId !== tempId);
+    renderTempItemsTable();
+}
+
+function renderTempItemsTable() {
+    const container = document.getElementById("itemListContainer");
+    const tbody = document.getElementById("tempItemsTableBody");
+    const countSpan = document.getElementById("tempItemCount");
+
+    countSpan.innerText = currentTrollyItems.length;
+
+    if (currentTrollyItems.length === 0) {
+        container.classList.add("hidden");
+        tbody.innerHTML = "";
+        return;
+    }
+
+    container.classList.remove("hidden");
+    tbody.innerHTML = currentTrollyItems.map(item => `
+        <tr>
+            <td class="py-2 font-extrabold text-blue-400">${item.LotNo}</td>
+            <td class="py-2">${item.Size}mm / ${item.Class} / ${item.Length}m</td>
+            <td class="py-2 font-bold text-emerald-400">${item.Qty}</td>
+            <td class="py-2 text-center">
+                <button type="button" onclick="removeTempItem(${item.tempId})" class="text-red-400 hover:underline">❌ Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+function saveEntry() {
+    const msgDiv = document.getElementById("message");
+    const dateVal = document.getElementById("Date").value;
+    const locationVal = document.getElementById("Location").value;
+    const trollyVal = document.getElementById("TrollyNo").value;
+
+    if (!dateVal || !locationVal || !trollyVal) {
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-red-500/20 text-red-300 border border-red-500/30 block";
+        msgDiv.innerHTML = "⚠️ Date, Location aur Trolly No select karna zaroori hai!";
+        return;
+    }
+
+    const prefix = document.getElementById("LotPrefix").value;
+    const num = document.getElementById("LotNumber").value;
+    const size = document.getElementById("Size").value;
+    const classVal = document.getElementById("Class").value;
+    const lengthVal = document.getElementById("Length").value;
+    const qty = document.getElementById("Qty").value;
+
+    if (prefix && num && size && classVal && lengthVal && qty) {
+        addItemToCurrentList();
+    }
+
+    if (currentTrollyItems.length === 0) {
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-red-500/20 text-red-300 border border-red-500/30 block";
+        msgDiv.innerHTML = "⚠️ Kripya Size, Class, Length, Lot No aur Qty properly fill karein!";
+        return;
+    }
+
+    const records = getStoredRecords();
+    const dateTimeStr = getDateTime();
+
+    currentTrollyItems.forEach(item => {
+        const entry = {
+            id: Date.now() + Math.random(),
+            Date: dateVal,
+            "Date & Time": dateTimeStr,
+            TrollyNo: String(trollyVal),
+            Location: String(locationVal),
+            LotNo: String(item.LotNo),
+            Size: String(item.Size),
+            Class: String(item.Class),
+            Length: String(item.Length),
+            CoatingDate: String(item.CoatingDate),
+            Qty: String(item.Qty),
+            "Stock Status": "Green",
+            "Inspaction Status": "Pending",
+            "Despatch Status": "Pending",
+            User: currentUsername || "Mukesh"
+        };
+        records.push(entry);
+    });
+
+    setStoredRecords(records);
+
+    msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 block";
+    msgDiv.innerHTML = `✅ Trolly (${trollyVal}) ke ${currentTrollyItems.length} items Phone me Save ho gaye!`;
+    
+    currentTrollyItems = [];
+    resetItemFields();
+    renderTempItemsTable();
+    renderUI();
+
+    setTimeout(() => { msgDiv.className = "hidden"; }, 4000);
+}
+
+function renderUI() {
+    const records = getStoredRecords();
+    const tbody = document.getElementById("localTableBody");
+
+    document.getElementById("recordCountBadge").innerText = `${records.length} Pending`;
+
+    if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-500">No pending entries saved locally.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = records.slice().reverse().map(item => `
+        <tr>
+            <td class="p-2 font-bold">${item.TrollyNo}<br><span class="text-blue-400">${item.LotNo}</span></td>
+            <td class="p-2">${item.Size}mm ${item.Class}<br><span class="text-[10px] text-slate-400">Coat: ${item.CoatingDate || 'N/A'}</span></td>
+            <td class="p-2 font-bold text-emerald-400">${item.Qty}</td>
+            <td class="p-2">${item.Location}</td>
+            <td class="p-2 text-center">
+                <button type="button" onclick="deleteLocalRecord('${item.id}')" class="text-red-400 hover:underline">🗑️ Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+function deleteLocalRecord(recordId) {
+    const records = getStoredRecords();
+    const record = records.find(item => String(item.id) === String(recordId));
+    if (!record) return;
+
+    if (!confirm(`Kya aap Lot ${record.LotNo} ki local entry delete karna chahte hain?`)) return;
+
+    const remaining = records.filter(item => String(item.id) !== String(recordId));
+    setStoredRecords(remaining);
+    renderUI();
+}
+
+async function syncAllToCloud() {
+    const records = getStoredRecords();
+    const msgDiv = document.getElementById("message");
+    const syncBtn = document.getElementById("syncBtn");
+
+    if (records.length === 0) {
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-blue-500/20 text-blue-300 border border-blue-500/30 block";
+        msgDiv.innerHTML = "ℹ️ Sync karne ke liye koi pending local data nahi hai!";
+        return;
+    }
+
+    syncBtn.disabled = true;
+    syncBtn.innerText = "⏳ Syncing...";
+    msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-blue-500/20 text-blue-300 border border-blue-500/30 block";
+    msgDiv.innerHTML = `⏳ Sending ${records.length} records to OneDrive...`;
+
+    const remainingRecords = [];
+    let successCount = 0;
+
+    for (let record of records) {
+        try {
+            const res = await fetch(POWER_AUTOMATE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(record)
+            });
+
+            if (res.ok || res.status === 200 || res.status === 202) {
+                successCount++;
+            } else {
+                remainingRecords.push(record);
+            }
+        } catch (err) {
+            remainingRecords.push(record);
+        }
+    }
+
+    setStoredRecords(remainingRecords);
+    syncBtn.disabled = false;
+    syncBtn.innerText = "🚀 Sync All to OneDrive";
+
+    if (successCount > 0) {
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 block";
+        msgDiv.innerHTML = `✅ ${successCount} Records successfully OneDrive me Sync ho gaye!`;
+    } else {
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-red-500/20 text-red-300 border border-red-500/30 block";
+        msgDiv.innerHTML = "❌ Network Error! Kripya Internet Connection Check karein.";
+    }
+
+    renderUI();
+}
+
+function resetItemFields() {
+    document.getElementById("Size").value = "";
+    document.getElementById("Class").value = "";
+    document.getElementById("Length").value = "";
+    document.getElementById("CoatingDate").value = "";
+    document.getElementById("LotPrefix").value = "";
+    document.getElementById("LotNumber").value = "";
+    document.getElementById("Qty").value = "";
+}
+
+// FIXED MOBILE CAMERA SCANNING LOGIC
+async function toggleScanner() {
+    const box = document.getElementById("scannerContainer");
+    const msgDiv = document.getElementById("message");
+
+    if (box.classList.contains("hidden")) {
+        box.classList.remove("hidden");
+
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+        try {
+            // Environment camera (back camera) request
+            await html5QrCode.start(
+                { facingMode: { exact: "environment" } },
+                config,
+                onScanSuccess,
+                () => {}
+            );
+        } catch (err) {
+            try {
+                // Fallback to default rear camera if exact fails
+                await html5QrCode.start(
+                    { facingMode: "user" },
+                    config,
+                    onScanSuccess,
+                    () => {}
+                );
+            } catch (fallbackErr) {
+                box.classList.add("hidden");
+                alert("❌ Camera Start nahi ho pa raha!\n\n1. Kripya ensure karein ki aap URL HTTPS par chala rahe hain (Local HTML file me camera mobile browser block kar deta hai).\n2. Browser setting me Camera Permission Allow karein.");
+            }
+        }
+    } else {
+        if (html5QrCode && html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
+        box.classList.add("hidden");
+    }
+}
+
+function onScanSuccess(decodedText) {
+    handleScannedData(decodedText.trim());
+    toggleScanner();
+}
+
+function handleScannedData(text) {
+    const raw = text.toUpperCase().replace(/\s+/g, '');
+    const msgDiv = document.getElementById("message");
+
+    if (raw.startsWith("TR") || raw.startsWith("TRAILER")) {
+        let matchedTrolly = "";
+        
+        if (raw.startsWith("TRAILER")) {
+            const num = raw.replace("TRAILER", "").replace("-", "");
+            matchedTrolly = `Trailer ${num}`;
+        } else if (raw.startsWith("TR")) {
+            const num = raw.replace("TR", "").replace("-", "");
+            matchedTrolly = `TR-${num}`;
+        }
+
+        const trollySelect = document.getElementById("TrollyNo");
+        let found = false;
+        for (let i = 0; i < trollySelect.options.length; i++) {
+            if (trollySelect.options[i].value.toUpperCase() === matchedTrolly.toUpperCase()) {
+                trollySelect.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+
+        msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-blue-500/20 text-blue-300 border border-blue-500/30 block";
+        if (found) {
+            msgDiv.innerHTML = `🛒 Trolley Detected: <b>${matchedTrolly}</b> Selected!`;
+        } else {
+            msgDiv.innerHTML = `⚠️ Scanned Trolley (${text}) list me nahi mila!`;
+        }
+        setTimeout(() => { msgDiv.className = "hidden"; }, 3000);
+        return;
+    }
+
+    const lotMatch = raw.match(/^([A-Z])[-]?(\d{1,2})$/);
+    if (lotMatch) {
+        const letter = lotMatch[1];
+        const num = parseInt(lotMatch[2], 10);
+
+        if (letter !== 'Y' && num >= 1 && num <= 32) {
+            document.getElementById("LotPrefix").value = letter;
+            document.getElementById("LotNumber").value = num;
+
+            msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 block";
+            msgDiv.innerHTML = `🏷️ Lot Detected: Prefix <b>${letter}</b> & Number <b>${num}</b> Set!`;
+            setTimeout(() => { msgDiv.className = "hidden"; }, 3000);
+            return;
+        }
+    }
+
+    msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-amber-500/20 text-amber-300 border border-amber-500/30 block";
+    msgDiv.innerHTML = `⚠️ Unrecognized Barcode: "${text}". Kripya manual dropdown se select karein.`;
+    setTimeout(() => { msgDiv.className = "hidden"; }, 3500);
+}
+</script>
+</body>
+</html>
