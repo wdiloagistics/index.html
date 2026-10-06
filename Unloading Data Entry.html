@@ -302,7 +302,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function populateDropdowns() {
-    // 1. Trolley & Trailer numbers datalist
     const trollyDatalist = document.getElementById("trollyList");
     trollyDatalist.innerHTML = "";
     
@@ -312,7 +311,6 @@ function populateDropdowns() {
         trollyDatalist.appendChild(opt);
     }
     
-    // Updated customized trailer numbers list
     const trailerNumbers = ['GJ12Z4123', 'GJ12AT6858', 'GJ01UU9698'];
     trailerNumbers.forEach(trailer => {
         const opt = document.createElement("option");
@@ -320,7 +318,6 @@ function populateDropdowns() {
         trollyDatalist.appendChild(opt);
     });
 
-    // 2. Lot Prefix datalist (NY at top, then A-Z except Y)
     const prefixDatalist = document.getElementById("prefixList");
     prefixDatalist.innerHTML = "";
     
@@ -336,7 +333,6 @@ function populateDropdowns() {
         prefixDatalist.appendChild(opt);
     }
 
-    // 3. Lot Number datalist (Updated 1 to 200)
     const numberDatalist = document.getElementById("numberList");
     numberDatalist.innerHTML = "";
     for (let i = 1; i <= 200; i++) {
@@ -465,7 +461,7 @@ function addItemToCurrentList() {
         Size: size,
         Class: classVal,
         Length: lengthVal,
-        CoatingDate: coatingDate || "N/A",
+        CoatingDate: coatingDate || "",
         LotNo: `${prefix}${lotNum}`,
         Qty: qty
     };
@@ -546,21 +542,22 @@ function saveEntry() {
 
     currentTrollyItems.forEach(item => {
         const entry = {
-            id: Date.now() + Math.random(),
-            Date: dateVal,
+            id: String(Date.now() + Math.floor(Math.random() * 1000)),
             "Date & Time": dateTimeStr,
+            "Coating Date": String(item.CoatingDate || ''),
             TrollyNo: String(trollyVal),
             Location: String(locationVal),
             LotNo: String(item.LotNo),
             Size: String(item.Size),
             Class: String(item.Class),
             Length: String(item.Length),
-            CoatingDate: String(item.CoatingDate),
             Qty: String(item.Qty),
+            "Allocated QTY": "0",
+            Balance: String(item.Qty),
             "Stock Status": "Green",
             "Inspaction Status": "Pending",
             "Despatch Status": "Pending",
-            User: currentUsername || "Mukesh"
+            USER: String(currentUsername || "Mukesh")
         };
         records.push(entry);
     });
@@ -592,7 +589,7 @@ function renderUI() {
     tbody.innerHTML = records.slice().reverse().map(item => `
         <tr>
             <td class="p-2 font-bold">${item.TrollyNo}<br><span class="text-blue-400">${item.LotNo}</span></td>
-            <td class="p-2">${item.Size}mm ${item.Class}<br><span class="text-[10px] text-slate-400">Coat: ${item.CoatingDate || 'N/A'}</span></td>
+            <td class="p-2">${item.Size}mm ${item.Class}<br><span class="text-[10px] text-slate-400">Coat: ${item['Coating Date'] || 'N/A'}</span></td>
             <td class="p-2 font-bold text-emerald-400">${item.Qty}</td>
             <td class="p-2">${item.Location}</td>
             <td class="p-2 text-center">
@@ -635,10 +632,30 @@ async function syncAllToCloud() {
 
     for (let record of records) {
         try {
+            // Payload fully mapped according to JSON Schema
+            const payload = {
+                id: String(record.id || ''),
+                "Date & Time": String(record["Date & Time"] || ''),
+                "Coating Date": String(record["Coating Date"] || ''),
+                TrollyNo: String(record.TrollyNo || ''),
+                Location: String(record.Location || ''),
+                LotNo: String(record.LotNo || ''),
+                Size: String(record.Size || ''),
+                Class: String(record.Class || ''),
+                Length: String(record.Length || ''),
+                Qty: String(record.Qty || ''),
+                "Allocated QTY": String(record["Allocated QTY"] || '0'),
+                Balance: String(record.Balance || record.Qty || ''),
+                "Stock Status": String(record["Stock Status"] || 'Green'),
+                "Inspaction Status": String(record["Inspaction Status"] || 'Pending'),
+                "Despatch Status": String(record["Despatch Status"] || 'Pending'),
+                USER: String(record.USER || 'Mukesh')
+            };
+
             const res = await fetch(POWER_AUTOMATE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(record)
+                body: JSON.stringify(payload)
             });
 
             if (res.ok || res.status === 200 || res.status === 202) {
@@ -647,6 +664,7 @@ async function syncAllToCloud() {
                 remainingRecords.push(record);
             }
         } catch (err) {
+            console.error("Fetch Exception:", err);
             remainingRecords.push(record);
         }
     }
@@ -660,7 +678,7 @@ async function syncAllToCloud() {
         msgDiv.innerHTML = `✅ ${successCount} Records successfully OneDrive me Sync ho gaye!`;
     } else {
         msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-red-500/20 text-red-300 border border-red-500/30 block";
-        msgDiv.innerHTML = "❌ Network Error! Kripya Internet Connection Check karein.";
+        msgDiv.innerHTML = "❌ Sync Error! Power Automate Flow execute nahi ho paya.";
     }
 
     renderUI();
@@ -725,7 +743,6 @@ function handleScannedData(text) {
     const raw = text.toUpperCase().replace(/\s+/g, '');
     const msgDiv = document.getElementById("message");
 
-    // Trolley / Trailer recognition
     if (raw.startsWith("TR") || raw.startsWith("GJ")) {
         document.getElementById("TrollyNo").value = text;
         msgDiv.className = "p-3 rounded-xl text-xs font-semibold text-center bg-blue-500/20 text-blue-300 border border-blue-500/30 block";
@@ -734,7 +751,6 @@ function handleScannedData(text) {
         return;
     }
 
-    // Lot Match for NY or A-Z letters and 1-200 numbers
     const lotMatch = raw.match(/^(NY|[A-Z])[-]?(\d{1,3})$/);
     if (lotMatch) {
         const prefixVal = lotMatch[1];
